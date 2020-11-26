@@ -1,0 +1,39 @@
+strategy:
+  matrix:
+#    ubuntu_latest_gcc_9:
+#      imageName: 'ubuntu-latest'
+#      CC: gcc-9
+#      CXX: g++-9
+#      the_name: 'Azure Pipelines'
+
+    windows_2016:
+      imageName: 'vs2017-win2016'
+      the_name: 'Azure Pipelines'
+
+
+pool:
+  vmImage: $(imageName)
+  name: $(the_name)
+
+
+steps:
+ - script: git submodule update --init --recursive
+   displayName: "Init Git Submodules"
+   condition: succeeded()
+ - script: cmake -S . -B ./build/
+   displayName: "CMake: Create Project"
+   condition: succeeded()
+ - script: cmake --build ./build
+   displayName: "CMake: Compile and Link"
+   condition: succeeded()
+ - script: ./build/test/TEST-Mona-Controller
+   displayName: "Run Tests on Linux / Mac OS"
+   condition: and(succeeded(), ne( variables['Agent.OS'], 'Windows_NT'))
+ - task: Powershell@2
+   inputs:
+     targetType: inline
+     script: |
+        .\build\test\Debug\TEST-Mona-Controller.exe
+        gc D:\a\_temp\*.ps1
+   displayName: "Run Tests on Windows"
+   condition: and(succeeded(), eq( variables['Agent.OS'], 'Windows_NT' ))
